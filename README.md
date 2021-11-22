@@ -34,7 +34,7 @@ OPTIONS:
 
 ## Performance
 
-This tool is _waaayyyy_ slower 
+This tool is _waaayyyy_ slower than Solana's `solana-keygen grind` command, because it spawns a bunch of `solana-keygen` tasks over-and-over, each of which have to start a whole other system process. It would be much faster if I wrote a Rust version, but I started with the Deno version because it's cool that I can write a script that you don't have to trust as much with Deno's security measures preventing the script from accessing the network and sending your seed phrases somewhere etc. I'll just contribute to the official `solana-keygen` tool so that it's fast and in Rust if enough people actually want this feature! ( seriously, open an issue if you really want to use this so that I know there's a need for it )
 
 [Deno]: https://deno.land/
 
