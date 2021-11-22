@@ -142,6 +142,7 @@ for (let i = 0; i < threadCount; i++) {
     new Promise<Key>((resolve) => {
       const tryNextAccount = () => {
         genPrimaryAccountKey(wordCount).then((key) => {
+          console.debug(key);
           if (key.pubkey.startsWith(startsWith)) {
             resolve(key);
           } else {
