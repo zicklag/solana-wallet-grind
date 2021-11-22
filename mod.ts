@@ -4,6 +4,7 @@ import {
   PartialOption,
   FiniteNumber,
   Text,
+  BinaryFlag,
   PARSE_FAILURE,
   EarlyExitFlag,
 } from "https://deno.land/x/args@2.1.1/index.ts";
@@ -50,6 +51,8 @@ async function genKey(options?: GenKeyOptions): Promise<Key> {
 
   await p.stdin.write(textEncoder.encode("\n"));
 
+  await p.status();
+
   const output = textDecoder.decode(await p.output());
 
   return {
@@ -68,6 +71,8 @@ async function getPrimaryAccountPubkey(seed: string): Promise<string> {
   });
 
   await p.stdin.write(textEncoder.encode(seed + "\n\n"));
+
+  await p.status();
 
   const output = textDecoder.decode(await p.output()).replace("\n", "");
 
@@ -106,8 +111,9 @@ const argParser = args
     })
   )
   .with(
-    PartialOption("threads", {
-      describe: "How many threads to use",
+    PartialOption("tasks", {
+      describe:
+        "How many async tasks to use to grind. It may actually be useful to set this higher than your number of CPU cores, because these don't correspond exactly to CPU threads",
       default: 6,
       type: FiniteNumber,
       alias: ["t"],
@@ -120,8 +126,8 @@ const argParser = args
       type: FiniteNumber,
       alias: ["w"],
     })
-  );
-
+  )
+  .with(BinaryFlag("caseInsensitive", { alias: ["i"] }));
 // Parse CLI arguments
 const parsedArgs = argParser.parse(Deno.args);
 if (parsedArgs.tag == PARSE_FAILURE) {
@@ -132,18 +138,24 @@ if (parsedArgs.tag == PARSE_FAILURE) {
 
 console.debug("settings:", parsedArgs.value);
 
-const threadCount = parsedArgs.value.threads;
+const taskCount = parsedArgs.value.tasks;
 const wordCount = parsedArgs.value.words;
-const startsWith = parsedArgs.value.startsWith;
+const caseInsensitive = parsedArgs.value.caseInsensitive;
+const startsWith = caseInsensitive
+  ? parsedArgs.value.startsWith.toLowerCase()
+  : parsedArgs.value.startsWith;
 
-const threads = [];
-for (let i = 0; i < threadCount; i++) {
-  threads.push(
+const tasks = [];
+for (let i = 0; i < taskCount; i++) {
+  tasks.push(
     new Promise<Key>((resolve) => {
       const tryNextAccount = () => {
         genPrimaryAccountKey(wordCount).then((key) => {
-          console.debug(key);
-          if (key.pubkey.startsWith(startsWith)) {
+          const pubkeyCmp = caseInsensitive
+            ? key.pubkey.toLowerCase()
+            : key.pubkey;
+
+          if (pubkeyCmp.startsWith(startsWith)) {
             resolve(key);
           } else {
             tryNextAccount();
@@ -156,7 +168,7 @@ for (let i = 0; i < threadCount; i++) {
   );
 }
 
-const key = await Promise.race(threads);
+const key = await Promise.race(tasks);
 
 console.log("Found matching seed phrase and public address:", key);
 
